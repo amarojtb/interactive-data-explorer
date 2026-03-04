@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Data Explorer | Amaro Barros</title>
+  <meta name="description" content="Interactive treemap data visualization demo by Amaro Barros. Squarified treemap algorithm with drill-down, tooltips, and smooth animations. Zero dependencies.">
+  <meta name="author" content="Amaro Barros">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES
+    ═══════════════════════════════════════════════ */
+    [data-theme="dark"] {
+      --bg-deep: #06080d;
+      --bg-panel: #0c1017;
+      --bg-card: #111720;
+      --bg-card-hover: #161e2a;
+      --border: #1a2233;
+      --border-glow: #1e3a5f;
+      --text-primary: #e8ecf4;
+      --text-secondary: #7a8ba8;
+      --text-muted: #4a5a74;
+      --accent-cyan: #22d3ee;
+      --accent-cyan-dim: rgba(34, 211, 238, 0.15);
+      --accent-emerald: #34d399;
+      --accent-emerald-dim: rgba(52, 211, 153, 0.12);
+      --accent-amber: #fbbf24;
+      --accent-amber-dim: rgba(251, 191, 36, 0.12);
+      --accent-violet: #a78bfa;
+      --accent-violet-dim: rgba(167, 139, 250, 0.12);
+      --accent-rose: #fb7185;
+      --accent-rose-dim: rgba(251, 113, 133, 0.12);
+      --grid-line: rgba(34, 211, 238, 0.03);
+      --grid-glow1: rgba(34, 211, 238, 0.06);
+      --grid-glow2: rgba(167, 139, 250, 0.04);
+      --shadow-card: rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-deep: #f4f6fa;
+      --bg-panel: #ffffff;
+      --bg-card: #f0f2f7;
+      --bg-card-hover: #e8ebf2;
+      --border: #d8dce6;
+      --border-glow: #b0bcd4;
+      --text-primary: #1a202c;
+      --text-secondary: #4a5568;
+      --text-muted: #8896ab;
+      --accent-cyan: #0891b2;
+      --accent-cyan-dim: rgba(8, 145, 178, 0.1);
+      --accent-emerald: #059669;
+      --accent-emerald-dim: rgba(5, 150, 105, 0.08);
+      --accent-amber: #d97706;
+      --accent-amber-dim: rgba(217, 119, 6, 0.08);
+      --accent-violet: #7c3aed;
+      --accent-violet-dim: rgba(124, 58, 237, 0.08);
+      --accent-rose: #e11d48;
+      --accent-rose-dim: rgba(225, 29, 72, 0.08);
+      --grid-line: rgba(8, 145, 178, 0.04);
+      --grid-glow1: rgba(8, 145, 178, 0.03);
+      --grid-glow2: rgba(124, 58, 237, 0.02);
+      --shadow-card: rgba(0, 0, 0, 0.06);
+    }
+
+    :root {
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-glow) var(--bg-deep);
+    }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    ::selection {
+      background: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    a { color: var(--accent-cyan); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #67e8f9; }
+
+    /* ═══════════════════════════════════════════════
+       GRID BACKGROUND
+    ═══════════════════════════════════════════════ */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    .grid-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, var(--grid-glow1), transparent 70%);
+    }
+
+    /* ═══════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════ */
+    .app-container {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 24px 48px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       TOP BAR
+    ═══════════════════════════════════════════════ */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-cyan);
+    }
+
+    .back-link svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════ */
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--accent-cyan-dim);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 100px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent-cyan);
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-badge .pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0); }
+    }
+
+    .header h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CONTROLS BAR
+    ═══════════════════════════════════════════════ */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      min-height: 36px;
+    }
+
+    .breadcrumb-item {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .breadcrumb-item:hover {
+      background: var(--bg-card);
+      color: var(--accent-cyan);
+    }
+
+    .breadcrumb-item.active {
+      background: var(--accent-cyan-dim);
+      color: var(--accent-cyan);
+      cursor: default;
+    }
+
+    .breadcrumb-sep {
+      color: var(--text-muted);
+      opacity: 0.4;
+      font-size: 11px;
+    }
+
+    .btn {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       TREEMAP CONTAINER
+    ═══════════════════════════════════════════════ */
+    .treemap-wrapper {
+      position: relative;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(34, 211, 238, 0.03),
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 80px rgba(34, 211, 238, 0.02);
+    }
+
+    .treemap-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .treemap-container {
+        aspect-ratio: 4 / 3;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .treemap-container {
+        aspect-ratio: 1 / 1;
+      }
+    }
+
+    .treemap-node {
+      position: absolute;
+      border-radius: 4px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .treemap-node::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .treemap-node:hover::before {
+      opacity: 1;
+    }
+
+    .treemap-node:hover {
+      z-index: 10;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .treemap-node .node-label {
+      font-family: var(--font-display);
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.95);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+      pointer-events: none;
+      transition: font-size 0.4s;
+    }
+
+    .treemap-node .node-value {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 2px;
+      pointer-events: none;
+      transition: font-size 0.4s;
+    }
+
+    .treemap-node.zooming-out {
+      transition: all 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .treemap-node.entering {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+
+    .treemap-node.entering-active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* ═══════════════════════════════════════════════
+       TOOLTIP
+    ═══════════════════════════════════════════════ */
+    .tooltip {
+      position: fixed;
+      z-index: 1000;
+      pointer-events: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transition: opacity 0.15s;
+      min-width: 180px;
+      backdrop-filter: blur(12px);
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    .tooltip-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tooltip-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .tooltip-details {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tooltip-details span {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .tooltip-details .val {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════
+       STATS BAR
+    ═══════════════════════════════════════════════ */
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-item .stat-val {
+      color: var(--accent-cyan);
+      font-weight: 500;
+    }
+
+    .stat-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    /* ═══════════════════════════════════════════════
+       LEGEND
+    ═══════════════════════════════════════════════ */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .legend-item:hover {
+      border-color: var(--border);
+      background: var(--bg-card);
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER NOTE
+    ═══════════════════════════════════════════════ */
+    .footer-note {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    .footer-note strong {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════
+       THEME TOGGLE
+    ═══════════════════════════════════════════════ */
+    .theme-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, background 0.3s;
+      color: var(--text-muted);
+    }
+    .theme-toggle:hover {
+      border-color: var(--border-glow);
+      color: var(--accent-cyan);
+    }
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .theme-toggle .icon-sun { display: none; }
+    .theme-toggle .icon-moon { display: block; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+    /* ═══════════════════════════════════════════════
+       UTILITY ANIMATIONS
+    ═══════════════════════════════════════════════ */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeInUp 0.6s ease-out both;
+    }
+
+    .fade-in-d1 { animation-delay: 0.1s; }
+    .fade-in-d2 { animation-delay: 0.2s; }
+    .fade-in-d3 { animation-delay: 0.3s; }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: prefers-reduced-motion
+    ═══════════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Focus styles
+    ═══════════════════════════════════════════════ */
+    :focus-visible {
+      outline: 2px solid var(--accent-cyan);
+      outline-offset: 3px;
+    }
+
+    :focus:not(:focus-visible) {
+      outline: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Screen reader only utility
+    ═══════════════════════════════════════════════ */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Skip to content link
+    ═══════════════════════════════════════════════ */
+    .skip-to-content {
+      position: absolute;
+      top: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 12px 24px;
+      background: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+    }
+
+    .skip-to-content:focus {
+      top: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Breadcrumb & legend button resets
+    ═══════════════════════════════════════════════ */
+    button.breadcrumb-item,
+    button.legend-item {
+      font: inherit;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    button.legend-item {
+      border: 1px solid transparent;
+    }
+  </style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-to-content">Skip to main content</a>
+
+<div class="grid-bg" aria-hidden="true"></div>
+
+<div class="app-container">
+
+  <!-- Top bar -->
+  <nav class="top-bar fade-in" aria-label="Page navigation">
+    <a href="../" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      back to portfolio
+    </a>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">zero dependencies</span>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <main id="main-content">
+
+  <!-- Header -->
+  <header class="header fade-in fade-in-d1">
+    <div class="header-badge">
+      <span class="pulse"></span>
+      DATA VISUALIZATION DEMO
+    </div>
+    <h1>Interactive Data Explorer</h1>
+    <p>A squarified treemap with hierarchical drill-down, built entirely with vanilla HTML, CSS, and JavaScript. No libraries. Click any category to zoom in.</p>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls-bar fade-in fade-in-d2">
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
+      <span class="breadcrumb-item active" aria-current="page">All Technologies</span>
+    </nav>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="btn-randomize" title="Randomize weights" aria-label="Randomize treemap weights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2.5 15.5A10 10 0 0 1 5 7.5l4-3"/><path d="M21.5 8.5A10 10 0 0 1 19 16.5l-4 3"/></svg>
+        Randomize
+      </button>
+      <button class="btn" id="btn-reset" title="Reset to root view" aria-label="Reset treemap to root view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Treemap -->
+  <div class="treemap-wrapper fade-in fade-in-d3">
+    <div class="treemap-container" id="treemap" role="img" aria-label="Interactive treemap visualization of technologies. Click to drill down into categories."></div>
+    <div class="stats-bar" id="stats-bar">
+      <span class="stat-item">Total Technologies: <span class="stat-val" id="stat-total">0</span></span>
+      <span class="stat-dot"></span>
+      <span class="stat-item">Categories: <span class="stat-val" id="stat-categories">0</span></span>
+      <span class="stat-dot"></span>
+      <span class="stat-item">Rendering <span class="stat-val" id="stat-nodes">0</span> nodes</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend fade-in fade-in-d3" id="legend"></div>
+
+  <!-- Aria-live region for treemap view announcements -->
+  <div id="treemap-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer-note fade-in fade-in-d3">
+    <strong>Squarified treemap algorithm</strong> &mdash; optimal aspect ratios, recursive partitioning<br>
+    Built with vanilla JS &bull; ~600 lines &bull; 0 dependencies &bull; by <a href="../">Amaro Barros</a>
+  </footer>
+
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip" role="tooltip" aria-hidden="true">
+  <div class="tooltip-name">
+    <span class="tooltip-color" id="tooltip-color"></span>
+    <span id="tooltip-name"></span>
+  </div>
+  <div class="tooltip-details">
+    <span>Weight <span class="val" id="tooltip-value"></span></span>
+    <span>Share <span class="val" id="tooltip-pct"></span></span>
+    <span>Category <span class="val" id="tooltip-category"></span></span>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   THEME INIT (runs immediately to prevent flash)
+═══════════════════════════════════════════════ */
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+/* ═══════════════════════════════════════════════
+   THEME COLOR HELPERS
+═══════════════════════════════════════════════ */
+function hexToRgba(hex, alpha) {
+  hex = hex.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+}
+
+function getThemeColors() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    textPrimary: s.getPropertyValue('--text-primary').trim(),
+    textSecondary: s.getPropertyValue('--text-secondary').trim(),
+    textMuted: s.getPropertyValue('--text-muted').trim(),
+    bgCard: s.getPropertyValue('--bg-card').trim(),
+    bgPanel: s.getPropertyValue('--bg-panel').trim(),
+    border: s.getPropertyValue('--border').trim(),
+    cyan: s.getPropertyValue('--accent-cyan').trim(),
+    emerald: s.getPropertyValue('--accent-emerald').trim(),
+    amber: s.getPropertyValue('--accent-amber').trim(),
+    violet: s.getPropertyValue('--accent-violet').trim(),
+    rose: s.getPropertyValue('--accent-rose').trim()
+  };
+}
+
+function buildColorPalette() {
+  const tc = getThemeColors();
+  return {
+    cyan:    { bg: tc.cyan,    dim: hexToRgba(tc.cyan, 0.18),    glow: hexToRgba(tc.cyan, 0.3) },
+    emerald: { bg: tc.emerald, dim: hexToRgba(tc.emerald, 0.18), glow: hexToRgba(tc.emerald, 0.3) },
+    amber:   { bg: tc.amber,   dim: hexToRgba(tc.amber, 0.18),   glow: hexToRgba(tc.amber, 0.3) },
+    violet:  { bg: tc.violet,  dim: hexToRgba(tc.violet, 0.18),  glow: hexToRgba(tc.violet, 0.3) },
+    rose:    { bg: tc.rose,    dim: hexToRgba(tc.rose, 0.18),    glow: hexToRgba(tc.rose, 0.3) },
+    sky:     { bg: tc.cyan,    dim: hexToRgba(tc.cyan, 0.18),    glow: hexToRgba(tc.cyan, 0.3) },
+  };
+}
+
+/* ═══════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════ */
+let COLORS = buildColorPalette();
+
+const COLOR_KEYS = Object.keys(COLORS);
+
+function createData() {
+  const w = () => Math.floor(Math.random() * 80) + 15;
+  return [
+    {
+      name: 'Frontend Frameworks', colorKey: 'cyan',
+      children: [
+        { name: 'Angular',   value: w() },
+        { name: 'React',     value: w() },
+        { name: 'Vue.js',    value: w() },
+        { name: 'Svelte',    value: w() },
+        { name: 'Next.js',   value: w() },
+        { name: 'Nuxt',      value: w() },
+        { name: 'Astro',     value: w() },
+        { name: 'Solid',     value: w() },
+      ]
+    },
+    {
+      name: 'Languages', colorKey: 'emerald',
+      children: [
+        { name: 'TypeScript', value: w() },
+        { name: 'JavaScript', value: w() },
+        { name: 'Python',     value: w() },
+        { name: 'Rust',       value: w() },
+        { name: 'Go',         value: w() },
+        { name: 'Java',       value: w() },
+        { name: 'C#',         value: w() },
+      ]
+    },
+    {
+      name: 'Build Tools', colorKey: 'amber',
+      children: [
+        { name: 'Vite',       value: w() },
+        { name: 'Webpack',    value: w() },
+        { name: 'esbuild',    value: w() },
+        { name: 'Rollup',     value: w() },
+        { name: 'Turbopack',  value: w() },
+        { name: 'Parcel',     value: w() },
+      ]
+    },
+    {
+      name: 'CSS & Styling', colorKey: 'violet',
+      children: [
+        { name: 'Tailwind',   value: w() },
+        { name: 'Sass/SCSS',  value: w() },
+        { name: 'CSS Modules',value: w() },
+        { name: 'Styled Comp',value: w() },
+        { name: 'PostCSS',    value: w() },
+        { name: 'UnoCSS',     value: w() },
+      ]
+    },
+    {
+      name: 'Testing', colorKey: 'rose',
+      children: [
+        { name: 'Jest',        value: w() },
+        { name: 'Vitest',      value: w() },
+        { name: 'Cypress',     value: w() },
+        { name: 'Playwright',  value: w() },
+        { name: 'Testing Lib', value: w() },
+        { name: 'Storybook',   value: w() },
+      ]
+    },
+    {
+      name: 'State & Data', colorKey: 'sky',
+      children: [
+        { name: 'NgRx',        value: w() },
+        { name: 'Redux',       value: w() },
+        { name: 'Zustand',     value: w() },
+        { name: 'TanStack Q',  value: w() },
+        { name: 'RxJS',        value: w() },
+        { name: 'GraphQL',     value: w() },
+        { name: 'tRPC',        value: w() },
+      ]
+    },
+  ];
+}
+
+let DATA = createData();
+
+/* ═══════════════════════════════════════════════
+   SQUARIFIED TREEMAP ALGORITHM
+═══════════════════════════════════════════════ */
+function squarify(items, rect) {
+  if (!items.length) return [];
+
+  const totalValue = items.reduce((s, d) => s + d.value, 0);
+  if (totalValue === 0) return [];
+
+  // Normalize values to area
+  const area = rect.w * rect.h;
+  const normalized = items.map(d => ({
+    ...d,
+    area: (d.value / totalValue) * area
+  }));
+
+  // Sort descending by area
+  normalized.sort((a, b) => b.area - a.area);
+
+  const rects = [];
+  layoutStrip(normalized, { x: rect.x, y: rect.y, w: rect.w, h: rect.h }, rects);
+  return rects;
+}
+
+function layoutStrip(items, rect, result) {
+  if (items.length === 0) return;
+  if (items.length === 1) {
+    result.push({
+      ...items[0],
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h
+    });
+    return;
+  }
+
+  const totalArea = items.reduce((s, d) => s + d.area, 0);
+
+  // Determine layout direction: lay along shortest side
+  const isWide = rect.w >= rect.h;
+  const side = isWide ? rect.h : rect.w;
+
+  let row = [];
+  let rowArea = 0;
+  let bestRatio = Infinity;
+
+  for (let i = 0; i < items.length; i++) {
+    const testRow = [...row, items[i]];
+    const testArea = rowArea + items[i].area;
+    const ratio = worstRatio(testRow, testArea, side);
+
+    if (ratio <= bestRatio) {
+      row = testRow;
+      rowArea = testArea;
+      bestRatio = ratio;
+    } else {
+      // Lay out the row
+      const rowLength = rowArea / side;
+      let offset = 0;
+
+      for (const item of row) {
+        const itemLength = item.area / rowLength;
+        if (isWide) {
+          result.push({ ...item, x: rect.x, y: rect.y + offset, w: rowLength, h: itemLength });
+        } else {
+          result.push({ ...item, x: rect.x + offset, y: rect.y, w: itemLength, h: rowLength });
+        }
+        offset += itemLength;
+      }
+
+      // Recurse on remaining
+      const remaining = items.slice(row.length);
+      const newRect = isWide
+        ? { x: rect.x + rowLength, y: rect.y, w: rect.w - rowLength, h: rect.h }
+        : { x: rect.x, y: rect.y + rowLength, w: rect.w, h: rect.h - rowLength };
+
+      layoutStrip(remaining, newRect, result);
+      return;
+    }
+  }
+
+  // Lay out final row
+  if (row.length > 0) {
+    const rowLength = rowArea / side;
+    let offset = 0;
+
+    for (const item of row) {
+      const itemLength = item.area / rowLength;
+      if (isWide) {
+        result.push({ ...item, x: rect.x, y: rect.y + offset, w: rowLength, h: itemLength });
+      } else {
+        result.push({ ...item, x: rect.x + offset, y: rect.y, w: itemLength, h: rowLength });
+      }
+      offset += itemLength;
+    }
+  }
+}
+
+function worstRatio(row, totalArea, side) {
+  if (row.length === 0) return Infinity;
+  const s2 = side * side;
+  const rowLen = totalArea / side;
+  let worst = 0;
+
+  for (const item of row) {
+    const itemLen = item.area / rowLen;
+    const r = Math.max((rowLen * rowLen) / (item.area > 0 ? item.area / rowLen * rowLen : 1),
+                       (item.area > 0 ? item.area / rowLen * rowLen : 1) / (rowLen * rowLen));
+    // Simpler: aspect ratio of each cell
+    const cellW = rowLen;
+    const cellH = item.area / rowLen;
+    const aspect = Math.max(cellW / (cellH || 1), cellH / (cellW || 1));
+    worst = Math.max(worst, aspect);
+  }
+  return worst;
+}
+
+/* ═══════════════════════════════════════════════
+   TREEMAP RENDERER
+═══════════════════════════════════════════════ */
+const GAP = 3;
+const container = document.getElementById('treemap');
+const tooltip = document.getElementById('tooltip');
+const breadcrumbEl = document.getElementById('breadcrumb');
+const treemapAnnouncer = document.getElementById('treemap-announcer');
+let currentLevel = null; // null = root, else category object
+let nodeElements = [];
+let animFrame = null;
+
+function getTotalValue(data) {
+  return data.reduce((s, cat) => s + cat.children.reduce((ss, c) => ss + c.value, 0), 0);
+}
+
+function getCategoryTotal(cat) {
+  return cat.children.reduce((s, c) => s + c.value, 0);
+}
+
+function getAllChildrenCount(data) {
+  return data.reduce((s, cat) => s + cat.children.length, 0);
+}
+
+function render(animate = true) {
+  const rect = container.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.height;
+
+  // Clear
+  container.innerHTML = '';
+  nodeElements = [];
+
+  if (currentLevel === null) {
+    renderRoot(W, H, animate);
+  } else {
+    renderCategory(currentLevel, W, H, animate);
+  }
+
+  updateStats();
+  updateBreadcrumb();
+  announceViewChange();
+}
+
+function renderRoot(W, H, animate) {
+  // Build category items with total values
+  const items = DATA.map(cat => ({
+    name: cat.name,
+    value: getCategoryTotal(cat),
+    colorKey: cat.colorKey,
+    category: cat
+  }));
+
+  const total = items.reduce((s, d) => s + d.value, 0);
+  const rects = squarify(items, { x: 0, y: 0, w: W, h: H });
+
+  rects.forEach((r, i) => {
+    const color = COLORS[r.colorKey];
+    const pct = ((r.value / total) * 100).toFixed(1);
+    const childCount = r.category.children.length;
+
+    // For each category, render sub-items inside
+    const catRect = { x: r.x + GAP, y: r.y + GAP, w: r.w - GAP * 2, h: r.h - GAP * 2 };
+    if (catRect.w <= 0 || catRect.h <= 0) return;
+
+    const subItems = r.category.children.map(c => ({ ...c }));
+    const subRects = squarify(subItems, { x: 0, y: 0, w: catRect.w, h: catRect.h });
+
+    subRects.forEach((sr, si) => {
+      const el = document.createElement('div');
+      el.className = 'treemap-node' + (animate ? ' entering' : '');
+      el.style.left = (catRect.x + sr.x + 1) + 'px';
+      el.style.top = (catRect.y + sr.y + 1) + 'px';
+      el.style.width = Math.max(0, sr.w - 2) + 'px';
+      el.style.height = Math.max(0, sr.h - 2) + 'px';
+
+      // Color: darken/lighten based on sub-index
+      const baseColor = color.bg;
+      const darken = 0.55 + (si / subRects.length) * 0.45;
+      el.style.background = adjustBrightness(baseColor, darken);
+
+      // Sizing labels
+      const nodeW = sr.w - 2;
+      const nodeH = sr.h - 2;
+      const fontSize = Math.min(Math.max(nodeW / 8, 10), 16);
+      const showLabel = nodeW > 40 && nodeH > 24;
+      const showValue = nodeW > 50 && nodeH > 40;
+
+      if (showLabel) {
+        const label = document.createElement('span');
+        label.className = 'node-label';
+        label.textContent = sr.name;
+        label.style.fontSize = fontSize + 'px';
+        el.appendChild(label);
+      }
+
+      if (showValue) {
+        const val = document.createElement('span');
+        val.className = 'node-value';
+        val.textContent = sr.value;
+        val.style.fontSize = Math.max(fontSize - 3, 9) + 'px';
+        el.appendChild(val);
+      }
+
+      // Data attrs for tooltip
+      el.dataset.name = sr.name;
+      el.dataset.value = sr.value;
+      el.dataset.category = r.name;
+      el.dataset.colorKey = r.colorKey;
+      el.dataset.pct = ((sr.value / total) * 100).toFixed(1);
+
+      // Click => drill into category
+      el.addEventListener('click', () => drillDown(r.category));
+      el.addEventListener('mouseenter', showTooltip);
+      el.addEventListener('mousemove', moveTooltip);
+      el.addEventListener('mouseleave', hideTooltip);
+
+      container.appendChild(el);
+      nodeElements.push(el);
+
+      if (animate) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.classList.remove('entering');
+            el.classList.add('entering-active');
+          });
+        });
+      }
+    });
+
+    // Category label overlay (big, semi-transparent)
+    if (catRect.w > 80 && catRect.h > 50) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        left: ${catRect.x}px;
+        top: ${catRect.y}px;
+        width: ${catRect.w}px;
+        height: ${catRect.h}px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: flex-start;
+        padding: 10px 14px;
+        pointer-events: none;
+        z-index: 5;
+      `;
+      const catLabel = document.createElement('span');
+      catLabel.style.cssText = `
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: ${Math.min(Math.max(catRect.w / 12, 12), 20)}px;
+        color: rgba(255,255,255,0.25);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      `;
+      catLabel.textContent = r.name;
+      overlay.appendChild(catLabel);
+
+      const catPct = document.createElement('span');
+      catPct.style.cssText = `
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: rgba(255,255,255,0.15);
+        margin-top: 2px;
+      `;
+      catPct.textContent = `${childCount} items \u00b7 ${pct}%`;
+      overlay.appendChild(catPct);
+
+      container.appendChild(overlay);
+    }
+  });
+}
+
+function renderCategory(cat, W, H, animate) {
+  const color = COLORS[cat.colorKey];
+  const items = cat.children.map(c => ({ ...c }));
+  const total = items.reduce((s, d) => s + d.value, 0);
+  const rects = squarify(items, { x: GAP, y: GAP, w: W - GAP * 2, h: H - GAP * 2 });
+
+  rects.forEach((r, i) => {
+    const el = document.createElement('div');
+    el.className = 'treemap-node' + (animate ? ' entering' : '');
+    el.style.left = (r.x + 1) + 'px';
+    el.style.top = (r.y + 1) + 'px';
+    el.style.width = Math.max(0, r.w - 2) + 'px';
+    el.style.height = Math.max(0, r.h - 2) + 'px';
+
+    const darken = 0.5 + (i / rects.length) * 0.5;
+    el.style.background = adjustBrightness(color.bg, darken);
+    el.style.cursor = 'default';
+
+    const nodeW = r.w - 2;
+    const nodeH = r.h - 2;
+    const fontSize = Math.min(Math.max(nodeW / 7, 12), 24);
+    const pct = ((r.value / total) * 100).toFixed(1);
+
+    if (nodeW > 40 && nodeH > 30) {
+      const label = document.createElement('span');
+      label.className = 'node-label';
+      label.textContent = r.name;
+      label.style.fontSize = fontSize + 'px';
+      el.appendChild(label);
+    }
+
+    if (nodeW > 60 && nodeH > 50) {
+      const val = document.createElement('span');
+      val.className = 'node-value';
+      val.textContent = `${r.value} (${pct}%)`;
+      val.style.fontSize = Math.max(fontSize - 4, 10) + 'px';
+      el.appendChild(val);
+    }
+
+    el.dataset.name = r.name;
+    el.dataset.value = r.value;
+    el.dataset.category = cat.name;
+    el.dataset.colorKey = cat.colorKey;
+    el.dataset.pct = pct;
+
+    el.addEventListener('mouseenter', showTooltip);
+    el.addEventListener('mousemove', moveTooltip);
+    el.addEventListener('mouseleave', hideTooltip);
+
+    // Hover glow in drilled-down view
+    el.addEventListener('mouseenter', () => {
+      el.style.boxShadow = `inset 0 0 30px ${color.glow}, 0 0 20px ${color.dim}`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.boxShadow = '';
+    });
+
+    container.appendChild(el);
+    nodeElements.push(el);
+
+    if (animate) {
+      el.style.transitionDelay = (i * 30) + 'ms';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.classList.remove('entering');
+          el.classList.add('entering-active');
+        });
+      });
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   DRILL DOWN / UP
+═══════════════════════════════════════════════ */
+function drillDown(category) {
+  currentLevel = category;
+  render(true);
+}
+
+function drillUp() {
+  if (currentLevel === null) return;
+  currentLevel = null;
+  render(true);
+}
+
+/* ═══════════════════════════════════════════════
+   BREADCRUMB
+═══════════════════════════════════════════════ */
+function updateBreadcrumb() {
+  breadcrumbEl.innerHTML = '';
+
+  if (currentLevel === null) {
+    const home = document.createElement('span');
+    home.className = 'breadcrumb-item active';
+    home.textContent = 'All Technologies';
+    home.setAttribute('aria-current', 'page');
+    breadcrumbEl.appendChild(home);
+  } else {
+    const home = document.createElement('button');
+    home.className = 'breadcrumb-item';
+    home.textContent = 'All Technologies';
+    home.addEventListener('click', drillUp);
+    breadcrumbEl.appendChild(home);
+
+    const sep = document.createElement('span');
+    sep.className = 'breadcrumb-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    sep.innerHTML = '&#9656;';
+    breadcrumbEl.appendChild(sep);
+
+    const item = document.createElement('span');
+    item.className = 'breadcrumb-item active';
+    item.textContent = currentLevel.name;
+    item.style.color = COLORS[currentLevel.colorKey].bg;
+    item.setAttribute('aria-current', 'page');
+    breadcrumbEl.appendChild(item);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════ */
+function updateStats() {
+  const totalTech = getAllChildrenCount(DATA);
+  const totalCats = DATA.length;
+  const rendered = currentLevel ? currentLevel.children.length : totalTech;
+
+  document.getElementById('stat-total').textContent = totalTech;
+  document.getElementById('stat-categories').textContent = totalCats;
+  document.getElementById('stat-nodes').textContent = rendered;
+}
+
+/* ═══════════════════════════════════════════════
+   ARIA-LIVE ANNOUNCEMENTS
+═══════════════════════════════════════════════ */
+function announceViewChange() {
+  if (currentLevel === null) {
+    treemapAnnouncer.textContent = 'Showing all technologies';
+  } else {
+    treemapAnnouncer.textContent = 'Showing ' + currentLevel.name + ' category';
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   LEGEND
+═══════════════════════════════════════════════ */
+function renderLegend() {
+  const legendEl = document.getElementById('legend');
+  legendEl.innerHTML = '';
+
+  DATA.forEach(cat => {
+    const item = document.createElement('button');
+    item.className = 'legend-item';
+    item.setAttribute('aria-label', 'Show ' + cat.name + ' category');
+
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.background = COLORS[cat.colorKey].bg;
+    swatch.setAttribute('aria-hidden', 'true');
+    item.appendChild(swatch);
+
+    const text = document.createTextNode(cat.name);
+    item.appendChild(text);
+
+    item.addEventListener('click', () => {
+      currentLevel = cat;
+      render(true);
+    });
+
+    legendEl.appendChild(item);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLTIP
+═══════════════════════════════════════════════ */
+function showTooltip(e) {
+  const el = e.currentTarget;
+  const color = COLORS[el.dataset.colorKey];
+
+  document.getElementById('tooltip-name').textContent = el.dataset.name;
+  document.getElementById('tooltip-value').textContent = el.dataset.value;
+  document.getElementById('tooltip-pct').textContent = el.dataset.pct + '%';
+  document.getElementById('tooltip-category').textContent = el.dataset.category;
+  document.getElementById('tooltip-color').style.background = color.bg;
+
+  tooltip.classList.add('visible');
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  const pad = 16;
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+
+  if (x + tw > window.innerWidth - pad) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
+
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  tooltip.classList.remove('visible');
+}
+
+/* ═══════════════════════════════════════════════
+   COLOR UTILITY
+═══════════════════════════════════════════════ */
+function adjustBrightness(hex, factor) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const nr = Math.round(Math.min(255, r * factor));
+  const ng = Math.round(Math.min(255, g * factor));
+  const nb = Math.round(Math.min(255, b * factor));
+  return `rgb(${nr}, ${ng}, ${nb})`;
+}
+
+/* ═══════════════════════════════════════════════
+   RANDOMIZE
+═══════════════════════════════════════════════ */
+function randomize() {
+  DATA = createData();
+  if (currentLevel) {
+    // Find matching category in new data
+    const match = DATA.find(c => c.name === currentLevel.name);
+    currentLevel = match || null;
+  }
+  render(true);
+  renderLegend();
+}
+
+/* ═══════════════════════════════════════════════
+   RESIZE HANDLER
+═══════════════════════════════════════════════ */
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => render(false), 150);
+});
+
+/* ═══════════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════════ */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Backspace') {
+    if (currentLevel !== null) {
+      e.preventDefault();
+      drillUp();
+    }
+  }
+  if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+    randomize();
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   BUTTON EVENTS
+═══════════════════════════════════════════════ */
+document.getElementById('btn-randomize').addEventListener('click', randomize);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  currentLevel = null;
+  render(true);
+});
+
+/* ═══════════════════════════════════════════════
+   THEME CHANGE HANDLER
+═══════════════════════════════════════════════ */
+function onThemeChange(theme) {
+  COLORS = buildColorPalette();
+  render(false);
+  renderLegend();
+}
+
+/* ═══════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════ */
+const themeToggle = document.getElementById('theme-toggle');
+themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  onThemeChange(next);
+});
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+renderLegend();
+render(true);
+</script>
+</body>
+</html>
