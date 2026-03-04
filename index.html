@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Data Explorer | Amaro Barros</title>
-  <meta name="description" content="Interactive treemap data visualization demo by Amaro Barros. Squarified treemap algorithm with drill-down, tooltips, and smooth animations. Zero dependencies.">
-  <meta name="author" content="Amaro Barros">
+  <title>Interactive Data Explorer</title>
+  <meta name="description" content="Interactive treemap data visualization. Squarified treemap algorithm with drill-down, tooltips, and smooth animations. Zero dependencies.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -778,6 +777,91 @@
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURATION — Edit this section to customize the treemap
+   ═══════════════════════════════════════════════════════════════ */
+const TREEMAP_CONFIG = {
+  // Page title
+  title: 'Interactive Data Explorer',
+
+  // Treemap data - hierarchical structure
+  // Each category has a name, colorKey, and children (items with values)
+  // colorKey must be one of: 'cyan', 'emerald', 'amber', 'violet', 'rose', 'sky'
+  // Values determine rectangle sizes — higher value = larger area
+  data: [
+    {
+      name: 'Frontend Frameworks', colorKey: 'cyan',
+      children: [
+        { name: 'Angular',   value: 78 },
+        { name: 'React',     value: 92 },
+        { name: 'Vue.js',    value: 71 },
+        { name: 'Svelte',    value: 55 },
+        { name: 'Next.js',   value: 84 },
+        { name: 'Nuxt',      value: 48 },
+        { name: 'Astro',     value: 62 },
+        { name: 'Solid',     value: 37 },
+      ]
+    },
+    {
+      name: 'Languages', colorKey: 'emerald',
+      children: [
+        { name: 'TypeScript', value: 90 },
+        { name: 'JavaScript', value: 88 },
+        { name: 'Python',     value: 82 },
+        { name: 'Rust',       value: 58 },
+        { name: 'Go',         value: 65 },
+        { name: 'Java',       value: 74 },
+        { name: 'C#',         value: 69 },
+      ]
+    },
+    {
+      name: 'Build Tools', colorKey: 'amber',
+      children: [
+        { name: 'Vite',       value: 88 },
+        { name: 'Webpack',    value: 72 },
+        { name: 'esbuild',    value: 64 },
+        { name: 'Rollup',     value: 53 },
+        { name: 'Turbopack',  value: 45 },
+        { name: 'Parcel',     value: 32 },
+      ]
+    },
+    {
+      name: 'CSS & Styling', colorKey: 'violet',
+      children: [
+        { name: 'Tailwind',   value: 90 },
+        { name: 'Sass/SCSS',  value: 68 },
+        { name: 'CSS Modules',value: 55 },
+        { name: 'Styled Comp',value: 42 },
+        { name: 'PostCSS',    value: 50 },
+        { name: 'UnoCSS',     value: 35 },
+      ]
+    },
+    {
+      name: 'Testing', colorKey: 'rose',
+      children: [
+        { name: 'Jest',        value: 80 },
+        { name: 'Vitest',      value: 72 },
+        { name: 'Cypress',     value: 68 },
+        { name: 'Playwright',  value: 75 },
+        { name: 'Testing Lib', value: 60 },
+        { name: 'Storybook',   value: 55 },
+      ]
+    },
+    {
+      name: 'State & Data', colorKey: 'sky',
+      children: [
+        { name: 'NgRx',        value: 52 },
+        { name: 'Redux',       value: 70 },
+        { name: 'Zustand',     value: 62 },
+        { name: 'TanStack Q',  value: 68 },
+        { name: 'RxJS',        value: 58 },
+        { name: 'GraphQL',     value: 72 },
+        { name: 'tRPC',        value: 48 },
+      ]
+    },
+  ]
+};
+
 /* ═══════════════════════════════════════════════
    THEME COLOR HELPERS
 ═══════════════════════════════════════════════ */
@@ -826,79 +910,7 @@ let COLORS = buildColorPalette();
 const COLOR_KEYS = Object.keys(COLORS);
 
 function createData() {
-  const w = () => Math.floor(Math.random() * 80) + 15;
-  return [
-    {
-      name: 'Frontend Frameworks', colorKey: 'cyan',
-      children: [
-        { name: 'Angular',   value: w() },
-        { name: 'React',     value: w() },
-        { name: 'Vue.js',    value: w() },
-        { name: 'Svelte',    value: w() },
-        { name: 'Next.js',   value: w() },
-        { name: 'Nuxt',      value: w() },
-        { name: 'Astro',     value: w() },
-        { name: 'Solid',     value: w() },
-      ]
-    },
-    {
-      name: 'Languages', colorKey: 'emerald',
-      children: [
-        { name: 'TypeScript', value: w() },
-        { name: 'JavaScript', value: w() },
-        { name: 'Python',     value: w() },
-        { name: 'Rust',       value: w() },
-        { name: 'Go',         value: w() },
-        { name: 'Java',       value: w() },
-        { name: 'C#',         value: w() },
-      ]
-    },
-    {
-      name: 'Build Tools', colorKey: 'amber',
-      children: [
-        { name: 'Vite',       value: w() },
-        { name: 'Webpack',    value: w() },
-        { name: 'esbuild',    value: w() },
-        { name: 'Rollup',     value: w() },
-        { name: 'Turbopack',  value: w() },
-        { name: 'Parcel',     value: w() },
-      ]
-    },
-    {
-      name: 'CSS & Styling', colorKey: 'violet',
-      children: [
-        { name: 'Tailwind',   value: w() },
-        { name: 'Sass/SCSS',  value: w() },
-        { name: 'CSS Modules',value: w() },
-        { name: 'Styled Comp',value: w() },
-        { name: 'PostCSS',    value: w() },
-        { name: 'UnoCSS',     value: w() },
-      ]
-    },
-    {
-      name: 'Testing', colorKey: 'rose',
-      children: [
-        { name: 'Jest',        value: w() },
-        { name: 'Vitest',      value: w() },
-        { name: 'Cypress',     value: w() },
-        { name: 'Playwright',  value: w() },
-        { name: 'Testing Lib', value: w() },
-        { name: 'Storybook',   value: w() },
-      ]
-    },
-    {
-      name: 'State & Data', colorKey: 'sky',
-      children: [
-        { name: 'NgRx',        value: w() },
-        { name: 'Redux',       value: w() },
-        { name: 'Zustand',     value: w() },
-        { name: 'TanStack Q',  value: w() },
-        { name: 'RxJS',        value: w() },
-        { name: 'GraphQL',     value: w() },
-        { name: 'tRPC',        value: w() },
-      ]
-    },
-  ];
+  return TREEMAP_CONFIG.data;
 }
 
 let DATA = createData();

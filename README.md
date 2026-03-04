@@ -1,32 +1,109 @@
 # Interactive Data Explorer
 
-A squarified treemap visualization with drill-down navigation, tooltips, and smooth animations. Built entirely from scratch — no charting libraries.
+A squarified treemap visualization with drill-down navigation, tooltips, and smooth animations. Built entirely from scratch — **no charting libraries**. Pure HTML Canvas and JavaScript.
 
-![Data Explorer Preview](https://img.shields.io/badge/demo-live-brightgreen)
+## Preview
+
+![Explorer](https://img.shields.io/badge/status-ready-brightgreen) ![Dependencies](https://img.shields.io/badge/dependencies-none-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
-- 🗺️ **Squarified Treemap** — Optimal rectangle packing algorithm
-- 🔍 **Drill-Down Navigation** — Click to explore nested data hierarchies
-- 💡 **Tooltips** — Hover for detailed data breakdowns
-- 🎬 **Smooth Animations** — CSS and Canvas transitions
+- 🗺️ **Squarified Treemap** — Optimal rectangle-packing algorithm for readable layouts
+- 🔍 **Drill-Down** — Click any category to zoom into its children
+- 🧭 **Breadcrumb Navigation** — Track your position and navigate back
+- 💡 **Rich Tooltips** — Hover for detailed data with percentages
+- 🎬 **Smooth Animations** — Transition effects on drill-down and resize
 - 🎨 **Light/Dark Theme** — Toggle with localStorage persistence
-- ⚡ **Zero Dependencies** — Pure HTML, CSS, Canvas, and JavaScript
+- ⚡ **Zero Dependencies** — Pure HTML Canvas and JavaScript
+- 📱 **Responsive** — Canvas redraws on window resize
 
 ## Quick Start
 
-1. Clone this repository
-2. Open `index.html` in your browser
-3. That's it! No build tools or server needed.
+```bash
+git clone https://github.com/amarojtb/interactive-data-explorer.git
+cd interactive-data-explorer
+open index.html
+```
 
-## Live Demo
+No build tools needed.
 
-[View Live Demo](https://amarojtb.github.io/projects/data-viz.html)
+## Customization
 
-## Usage
+All data lives in the `TREEMAP_CONFIG` object at the top of `index.html`:
 
-This is a single-file application. Simply download `index.html` and open it in any modern browser.
+### Data Structure
+
+```javascript
+data: [
+  {
+    name: 'Category Name',
+    icon: '🎨',
+    children: [
+      { name: 'Item A', value: 85 },
+      { name: 'Item B', value: 72 },
+      // Values determine rectangle sizes
+    ]
+  },
+  // Add more categories...
+]
+```
+
+| Property | Description |
+|----------|-------------|
+| `name` | Category or item name |
+| `icon` | Emoji icon for the category |
+| `children` | Array of child items (for categories) |
+| `value` | Numeric value determining area size (for leaf items) |
+
+### Example: File Size Explorer
+
+```javascript
+data: [
+  {
+    name: 'Documents',
+    icon: '📄',
+    children: [
+      { name: 'report.pdf', value: 2400 },
+      { name: 'slides.pptx', value: 1800 },
+    ]
+  },
+  {
+    name: 'Images',
+    icon: '🖼️',
+    children: [
+      { name: 'photo.jpg', value: 4200 },
+      { name: 'screenshot.png', value: 850 },
+    ]
+  }
+]
+```
+
+## Use Cases
+
+- **Disk Usage** — Visualize file/folder sizes
+- **Budget Breakdown** — Show spending categories
+- **Market Share** — Display competitive landscapes
+- **Tech Stack** — Compare technology adoption
+- **Portfolio Allocation** — Visualize investment distribution
+
+## Algorithm
+
+Uses the **squarified treemap** algorithm (Bruls, Huizing, van Wijk, 2000) which optimizes rectangle aspect ratios for readability, unlike slice-and-dice which creates thin strips.
+
+## Architecture
+
+```
+index.html (single file)
+├── CSS Custom Properties (theming)
+├── HTML (canvas + breadcrumbs + legend)
+└── JavaScript
+    ├── TREEMAP_CONFIG (your data goes here)
+    ├── Squarify Algorithm (layout computation)
+    ├── Canvas Renderer (drawing + animations)
+    ├── Interaction (click, hover, drill-down)
+    └── Legend & Breadcrumbs (navigation)
+```
 
 ## License
 
-MIT
+MIT — free to use in personal and commercial projects.
